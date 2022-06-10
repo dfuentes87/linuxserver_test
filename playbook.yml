@@ -4,8 +4,8 @@
   become: true
   remote_user: root
   vars:
-    wordpress_dir: /var/www/html/
-    wordpress_home_url: '50.62.181.178'
+    wordpress_dir: DOC_ROOT
+    wordpress_home_url: 'IP OR DOMAIN'
     # There is no need to edit the variables below this line
     mysql_root_password: "{{ lookup('password', '/dev/null length=25 chars=ascii_letters,digits,punctuation') }}"
     wordpress_db_name: wordpress
