@@ -1,0 +1,59 @@
+---
+# tasks file for mariadb
+- name: yum - Install mariadb-server
+  yum:
+    name: mariadb-server
+    state: present
+  become: true
+  when: ansible_os_family == "RedHat"
+  register: install_database_yum
+
+- name: apt - Install mariadb-server
+  apt:
+    name: mariadb-server
+    state: present
+  become: true
+  when: ansible_os_family == "Debian"
+  register: install_database_apt
+
+- name: Enable and start mariadb
+  service:
+    name: mariadb
+    enabled: true
+    state: started
+
+- name: Configure MariaDB
+  block:
+    - name: Set MariaDB root password
+      mysql_user:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        user: root
+        check_implicit_admin: true
+        password: "{{ mysql_root_password }}"
+        host: localhost
+
+    - name: Remove the test database
+      mysql_db:
+        name: test
+        state: absent
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+
+    - name: Create the WordPress database
+      mysql_db:
+        name: "{{ wordpress_db_name }}"
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+      become: true
+
+    - name: Create database user and apply grants
+      mysql_user:
+        name: "{{ wordpress_db_user }}"
+        password: "{{ wordpress_db_user_pass }}"
+        priv: "*.*:ALL"
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+      become: true
+  when: install_database_yum.changed or install_database_apt.changed
