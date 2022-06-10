@@ -1,0 +1,49 @@
+---
+- hosts: all
+  gather_facts: true
+  become: true
+  remote_user: root
+  vars:
+    wordpress_dir: /var/www/html/
+    wordpress_home_url: '50.62.181.178'
+    # There is no need to edit the variables below this line
+    mysql_root_password: "{{ lookup('password', '/dev/null length=25 chars=ascii_letters,digits,punctuation') }}"
+    wordpress_db_name: wordpress
+    wordpress_db_user: wordpress
+    wordpress_db_user_pass: "{{ lookup('password', '/dev/null length=25 chars=ascii_letters,digits,punctuation') }}"
+    # wordpress_admin_user_pass: "{{ lookup('password', '/dev/null length=25 chars=ascii_letters,digits,punctuation') }}"
+
+  pre_tasks:
+    - name: Install repos and dependencies
+      block:
+        - name: Install epel-release
+          yum:
+            name: epel-release
+            state: latest
+        - name: Install Remi repo
+          yum:
+            name: http://rpms.remirepo.net/enterprise/remi-release-7.rpm
+            state: present
+          register: remi_result
+        - name: Enable Remi repo
+          command: yum-config-manager --enable remi-php73
+          when: remi_result.changed
+        - name: Install wp-cli and MySQL-python
+          yum:
+            name:
+              - wp-cli
+              - MySQL-python
+            state: latest
+      when: ansible_os_family == "RedHat"
+      rescue:
+        - name: apt - Install wp-cli
+          apt:
+            name: wp-cli
+            state: latest
+          when: ansible_os_family == "Debian"
+
+  roles:
+    - apache
+    - nginx
+    - mariadb
+    - wordpress
