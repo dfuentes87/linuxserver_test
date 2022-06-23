@@ -1,49 +1,72 @@
 ---
 - hosts: all
   gather_facts: true
-  become: true
   remote_user: root
   vars:
     wordpress_dir: DOC_ROOT
     wordpress_home_url: 'IP OR DOMAIN'
-    # There is no need to edit the variables below this line
-    mysql_root_password: "{{ lookup('password', '/dev/null length=25 chars=ascii_letters,digits,punctuation') }}"
-    wordpress_db_name: wordpress
-    wordpress_db_user: wordpress
-    wordpress_db_user_pass: "{{ lookup('password', '/dev/null length=25 chars=ascii_letters,digits,punctuation') }}"
-    # wordpress_admin_user_pass: "{{ lookup('password', '/dev/null length=25 chars=ascii_letters,digits,punctuation') }}"
 
   pre_tasks:
-    - name: Install repos and dependencies
+    - name: Tag required message
+      run_once: true
+      ansible.builtin.debug:
+        msg: >
+          This playbook will do nothing unless you specify a tag with
+          the `--tags` option on the command line. See README for details.
+      tags:
+        - always
+    - name: Set variables semi-permenantly for this playbook run
+      ansible.builtin.set_fact:
+        wordpress_db_name: wordpress
+        wordpress_db_user: wordpress
+        wordpress_db_user_pass: "{{ lookup('password', '/dev/null length=25 chars=ascii_letters,digits,punctuation') }}"
+      tags: [never, provision]
+
+    - name: yum - Install repos and dependencies
       block:
-        - name: Install epel-release
-          yum:
+        - name: yum - Install epel-release
+          ansible.builtin.yum:
             name: epel-release
-            state: latest
-        - name: Install Remi repo
-          yum:
+            state: present
+        - name: yum - Install Remi repo for php 7.3
+          ansible.builtin.yum:
             name: http://rpms.remirepo.net/enterprise/remi-release-7.rpm
             state: present
           register: remi_result
-        - name: Enable Remi repo
-          command: yum-config-manager --enable remi-php73
+        - name: yum - Enable Remi repo
+          ansible.builtin.command: yum-config-manager --enable remi-php73
           when: remi_result.changed
-        - name: Install wp-cli and MySQL-python
-          yum:
+        - name: yum - Install wp-cli and MySQL-python
+          ansible.builtin.yum:
             name:
               - wp-cli
               - MySQL-python
-            state: latest
+            state: present
       when: ansible_os_family == "RedHat"
-      rescue:
-        - name: apt - Install wp-cli
-          apt:
-            name: wp-cli
-            state: latest
-          when: ansible_os_family == "Debian"
+      tags: [never, provision]
+
+    - name: apt - Install repos and dependencies
+      block:
+        - name: apt - Add php73 ppa repo
+          ansible.builtin.apt_repository:
+            repo: ppa:ondrej/php
+        - name: apt - Install wp-cli and MySQL-python
+          ansible.builtin.yum:
+            name:
+              - wp-cli
+              - MySQL-python
+            state: present
+      when: ansible_os_family == "Debian"
+      tags: [never, provision]
 
   roles:
-    - apache
-    - nginx
-    - mariadb
-    - wordpress
+    - role: apache
+      tags: [never, provision]
+    - role: nginx
+      tags: [never, provision]
+    - role: mariadb
+      tags: [never, provision]
+    - role: wordpress
+      tags: [never, provision]
+    - role: break
+      tags: [never, provision, break]
