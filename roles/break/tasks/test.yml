@@ -1,0 +1,36 @@
+---
+# breaking apache
+- name: run httpd
+  block:
+    - name: Change the httpd Listen port
+      ansible.builtin.lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: '^Listen '
+        line: Listen 7080
+    - name: restart httpd
+      ansible.builtin.service:
+        name: httpd
+        state: started
+  when: ansible_os_family == "RedHat"
+
+- name: run apache2
+  block:
+    - name: Change the apache2 Listen port
+      ansible.builtin.lineinfile:
+        path: /etc/apache2/apache2.conf
+        regexp: '^Listen '
+        line: Listen 7080
+    - name: restart apache2
+      ansible.builtin.service:
+        name: apache2
+        state: stared
+  when: ansible_os_family == "Debian"
+
+# breaking nginx
+
+# breaking mariadb
+
+# breaking wordpress
+
+
+# breaking other files
