@@ -1,55 +1,34 @@
 ---
-# tasks file for apache & php
-- name: yum - Install and configure httpd
+- name: yum - Install httpd
   block:
     - name: Install httpd and php
-      yum:
+      ansible.builtin.yum:
         name:
           - httpd
           - php
           - php-mysql
           - php-common
         state: present
-      register: httpd_installed
-    - name: change the LISTEN port
-      lineinfile:
+    - name: Set AllowOverride in httpd.conf for WordPress
+      ansible.builtin.replace:
         path: /etc/httpd/conf/httpd.conf
-        regexp: '^Listen '
-        line: Listen 7080
-    - name: AllowOverride all
-      replace:
-        dest: /etc/httpd/conf/httpd.conf
         regexp: '(<[dD]irectory /var/www/>[^<]*)AllowOverride None'
         replace: '\1AllowOverride All'
-    - name: enable and start httpd
-      service:
-        name: httpd
-        enabled: true
-        state: started
-      when: httpd_installed.changed
-  become: true
   when: ansible_os_family == "RedHat"
 
-- name: apt - Install and configure apache2
+- name: apt - Install apache2
   block:
-    - name: Install apache and php
-      apt:
+    - name: Install apache2 and php
+      ansible.builtin.apt:
         name:
           - apache2
           - php
           - php-mysql
+          - php-common
         state: present
-      register: apache2_installed
-    - name: Change the LISTEN port
-      lineinfile:
-        path: /etc/apache2/ports.conf
-        regexp: '^Listen '
-        line: Listen 7080
-    - name: Enable and start apache
-      service:
-        name: apache2
-        enabled: true
-        state: started
-      when: apache2_installed.changed
-  become: true
+    - name: Set AllowOverride in apache2.conf for WordPress
+      ansible.builtin.replace:
+        path: /etc/apache2/apache2.conf
+        regexp: '(<[dD]irectory /var/www/>[^<]*)AllowOverride None'
+        replace: '\1AllowOverride All'
   when: ansible_os_family == "Debian"

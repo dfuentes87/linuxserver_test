@@ -1,0 +1,98 @@
+---
+# breaking apache
+- name: Break httpd
+  block:
+    - name: Change the httpd Listen port
+      ansible.builtin.lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: '^Listen '
+        line: Listen 9999
+    - name: start httpd
+      ansible.builtin.service:
+        name: httpd
+        state: started
+  when: ansible_os_family == "RedHat"
+
+- name: Break apache2
+  block:
+    - name: Change the apache2 Listen port
+      ansible.builtin.lineinfile:
+        path: /etc/apache2/ports.conf
+        regexp: '^Listen '
+        line: Listen 9999
+    - name: start apache2
+      ansible.builtin.service:
+        name: apache2
+        state: started
+  when: ansible_os_family == "Debian"
+
+# breaking nginx
+
+# breaking mariadb
+- name: Stop mariadb
+  ansible.builtin.service:
+    name: mariadb
+    enabled: false
+    state: stopped
+
+# breaking wordpress
+- name: Break WordPress
+  block:
+    - name: Remove wp-config.php immutable flag (if necessary)
+      ansible.builtin.file:
+        path: /var/www/html/wp-config.php
+        attr: -i
+      register: wpconfig_stat
+      changed_when: "'i' in wpconfig_stat.diff.before.attributes"
+
+    - name: Change wp-config.php database connection details
+      ansible.builtin.lineinfile:
+        path: /var/www/html/wp-config.php
+        regexp: "define\\('DB_PASSWORD', '(.)+'\\);"
+        line: define('DB_NAME', 'totallyrealpassword');
+    - name: Set wp-config.php immutable
+      ansible.builtin.file:
+        path: /var/www/html/wp-config.php
+        attr: +i
+      register: wpconfig_stat
+      changed_when: "'i' not in wpconfig_stat.diff.before.attributes"
+
+# breaking other files
+- name: chmod 000 /usr/bin/ls
+  ansible.builtin.file:
+    path: /usr/bin/ls
+    mode: 000
+  register: ls_stat
+  changed_when: "'000' not in ls_stat.diff.before.mode"
+
+  # breaking iptables
+- name: Reset iptables
+  block:
+    - name: Flush iptables
+      ansible.builtin.iptables:
+        chain: "{{ item }}"
+        flush: true
+      with_items: ['INPUT', 'FORWARD', 'OUTPUT']
+    - name: Allow inbound TCP port 22 (SSH)
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: 22
+        jump: ACCEPT
+        comment: Accept new SSH connections.
+    - name: Firewall rule - allow established connections
+      ansible.builtin.iptables:
+        chain: INPUT
+        ctstate: ESTABLISHED,RELATED
+        jump: ACCEPT
+
+- name: Break iptables
+  block:
+    - name: Set the policy for the INPUT chain to DROP
+      ansible.builtin.iptables:
+        chain: INPUT
+        policy: DROP
+
+- name: save iptables v4 rules # noqa no-changed-when
+  ansible.builtin.command: iptables-save > /etc/iptables/rules.v4
+  listen: persist iptables

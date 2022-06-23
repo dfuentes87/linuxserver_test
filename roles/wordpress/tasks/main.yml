@@ -1,53 +1,33 @@
 ---
-# tasks file for wordpress
 - name: Check for previous WordPress installation
-  stat:
+  ansible.builtin.stat:
     path: "{{ wordpress_dir }}/wp-config.php"
-  register: stat_result
-
-- name: (re)configure WordPress
-  block:
-    - name: Remove previous wp-config.php
-      file:
-        path: "{{ wordpress_dir }}/wp-config.php"
-        state: absent
-
-    - name: recreate broken wp-config.php
-      template:
-        src: wp-config.php
-        dest: "{{ wordpress_dir }}/wp-config.php"
-        mode: '0400'
-
-    - name: remove .htaccess
-      file:
-        path: "{{ wordpress_dir }}/.htaccess"
-        state: absent
-  when: stat_result.stat.exists
+  register: wp_stat_result
 
 - name: Install and configure WordPress
   block:
-    - name: set timezone or wp-cli might fail due to bug
-      command: timedatectl set-timezone UTC
+    - name: set timezone or wp-cli might fail due to bug # noqa no-changed-when
+      ansible.builtin.command: timedatectl set-timezone UTC
 
-    - name: Download WordPress
-      command: wp core download
+    - name: Download WordPress # noqa no-changed-when
+      ansible.builtin.command: wp core download
         --path="{{ wordpress_dir }}"
 
-    - name: Configure WordPress
-      command: wp core config
+    - name: Configure WordPress # noqa no-changed-when
+      ansible.builtin.command: wp core config
               --path="{{ wordpress_dir }}"
               --dbname="{{ wordpress_db_name }}"
               --dbuser="{{ wordpress_db_user }}"
               --dbpass="{{ wordpress_db_user_pass }}"
               --dbprefix="wp_"
 
-    - name: Install WordPress
-      command: wp core install
+    - name: Install WordPress # noqa no-changed-when
+      ansible.builtin.command: wp core install
                 --path="{{ wordpress_dir }}"
                 --url="{{ wordpress_home_url }}"
                 --title="Test Site"
                 --admin_user="techsupport_user"
                 --admin_password="{{ lookup('password', '/dev/null length=25 chars=ascii_letters,digits,punctuation') }}"
-                --admin_email="fakeemail@fakeemail.com"
+                --admin_email="fake.email@fake-host.localhost"
                 --skip-email
-  when: not stat_result.stat.exists
+  when: not wp_stat_result.stat.exists
