@@ -1,37 +1,34 @@
 ---
-# tasks file for nginx
-- name: yum - Install and configure nginx
+- name: yum - Install nginx and configure it as a reverse proxy
   block:
     - name: install nginx
-      yum:
+      ansible.builtin.yum:
         name: nginx
         state: present
     - name: copy proxy.conf for reverse proxy
-      template:
+      ansible.builtin.template:
         src: proxy.conf
         dest: /etc/nginx/conf.d/proxy.conf
         mode: '0644'
         force: true
-  become: true
   when: ansible_os_family == "RedHat"
 
-- name: apt - Install and configure nginx
+- name: apt - Install nginx and configure it as a reverse proxy
   block:
     - name: install nginx
-      apt:
+      ansible.builtin.apt:
         name: nginx
         state: present
     - name: copy proxy.conf for reverse proxy
-      template:
+      ansible.builtin.template:
         src: proxy.conf
         dest: /etc/nginx/conf.d/proxy.conf
         mode: '0644'
         force: true
-  become: true
   when: ansible_os_family == "Debian"
 
 - name: enable and start nginx
-  service:
+  ansible.builtin.service:
     name: nginx
     enabled: true
     state: started
